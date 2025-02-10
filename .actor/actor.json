@@ -1,0 +1,14 @@
+{
+  "actorSpecification": 1,
+  "name": "Bluesky-Crawlee",
+  "title": "Bluesky - Crawlee",
+  "minMemoryMbytes": 128,
+  "maxMemoryMbytes": 2048,
+  "description": "Scrape data products from bluesky",
+  "version": "0.1",
+  "meta": {
+    "templateId": "bluesky-crawlee"
+  },
+  "input": "./input_schema.json",
+  "dockerfile": "./Dockerfile"
+}

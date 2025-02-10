@@ -1,0 +1,55 @@
+{
+  "title": "Bluesky - Crawlee",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "indentifier": {
+      "title": "Bluesky indentifier",
+      "description": "Bluesky indentifier for login in API",
+      "type": "string",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "appPassword": {
+      "title": "Bluesky app password",
+      "description": "Bluesky app password for API",
+      "type": "string",
+      "editor": "textfield",
+      "isSecret": true
+    },
+    "maxRequestsPerCrawl": {
+      "title": "Max requests per crawl",
+      "description": "The maximum number of request that will be made when crawling",
+      "type": "integer"
+    },
+    "queries": {
+      "title": "Queries",
+      "type": "array",
+      "description": "Queries for search",
+      "editor": "stringList",
+      "prefill": [
+        "apify"
+      ],
+      "example": [
+        "apify",
+        "crawlee"
+      ]
+    },
+    "mode": {
+      "title": "Mode",
+      "type": "string",
+      "description": "Collect posts or users who post on a topic",
+      "enum": [
+        "posts",
+        "users"
+      ],
+      "default": "posts"
+    }
+  },
+  "required": [
+    "indentifier",
+    "appPassword",
+    "queries",
+    "mode"
+  ]
+}
