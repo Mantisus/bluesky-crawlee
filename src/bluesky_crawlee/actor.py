@@ -25,8 +25,8 @@ class BlueskyCrawler:
         self.max_request = max_request
 
         # Variables for storing session data
-        self._domain: str | None = None
-        self._did: str | None = None
+        self._service_edpoint: str | None = None
+        self._user_did: str | None = None
         self._access_token: str | None = None
         self._refresh_token: str | None = None
         self._handle: str | None = None
@@ -44,15 +44,15 @@ class BlueskyCrawler:
 
         data = response.json()
 
-        self._domain = data['didDoc']['service'][0]['serviceEndpoint']
-        self._did = data['didDoc']['id']
+        self._service_edpoint = data['didDoc']['service'][0]['serviceEndpoint']
+        self._user_did = data['didDoc']['id']
         self._access_token = data['accessJwt']
         self._refresh_token = data['refreshJwt']
         self._handle = data['handle']
 
     def delete_session(self) -> None:
         """Delete the current session."""
-        url = f'{self._domain}/xrpc/com.atproto.server.deleteSession'
+        url = f'{self._service_edpoint}/xrpc/com.atproto.server.deleteSession'
         headers = {'Content-Type': 'application/json', 'authorization': f'Bearer {self._refresh_token}'}
 
         response = httpx.post(url, headers=headers)
@@ -60,7 +60,7 @@ class BlueskyCrawler:
 
     async def init_crawler(self) -> None:
         """Initialize the crawler."""
-        if not self._did:
+        if not self._user_did:
             raise ValueError('Session not created.')
 
         # Initialize the crawler
@@ -99,11 +99,13 @@ class BlueskyCrawler:
         user_requests = {}
         posts = []
 
+        prfile_url = URL(f'{self._service_edpoint}/xrpc/app.bsky.actor.getProfile')
+
         for post in data['posts']:
             # Add user request if not already added in current context
             if self.mode == 'users' and post['author']['did'] not in user_requests:
                 user_requests[post['author']['did']] = Request.from_url(
-                    url=f'{self._domain}/xrpc/app.bsky.actor.getProfile?actor={post["author"]["did"]}',
+                    url=str(prfile_url.with_query(actor=post['author']['did'])),
                     user_data={'label': 'user'},
                 )
             elif self.mode == 'posts':
@@ -126,7 +128,7 @@ class BlueskyCrawler:
                 )
 
         if self.mode == 'posts':
-            await context.push_data(posts)  # Push butch posts data to the dataset
+            await context.push_data(posts)  # Push a batch of posts to the dataset
         else:
             await context.add_requests(list(user_requests.values()))
 
@@ -160,7 +162,9 @@ class BlueskyCrawler:
         if not self._crawler:
             raise ValueError('Crawler not initialized.')
 
-        await self._crawler.run([f'{self._domain}/xrpc/app.bsky.feed.searchPosts?q={query}' for query in queries])
+        search_url = URL(f'{self._service_edpoint}/xrpc/app.bsky.feed.searchPosts')
+
+        await self._crawler.run([str(search_url.with_query(q=query)) for query in queries])
 
 
 async def run() -> None:

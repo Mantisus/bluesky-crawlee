@@ -8,8 +8,8 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    "apify>=2.2.1",
-    "crawlee==0.5.4",
+    "apify>=2.4.0",
+    "crawlee==0.6.5",
 ]
 
 [project.scripts]
