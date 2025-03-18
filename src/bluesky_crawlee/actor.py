@@ -1,6 +1,7 @@
 import asyncio
 import json
 import traceback
+from dataclasses import dataclass
 
 import httpx
 from apify import Actor
@@ -11,7 +12,18 @@ from crawlee.crawlers import HttpCrawler, HttpCrawlingContext
 from crawlee.http_clients import HttpxHttpClient
 
 
-class BlueskyCrawler:
+@dataclass
+class ActorInput:
+    """Actor input schema."""
+
+    identifier: str
+    app_password: str
+    queries: list[str]
+    mode: str
+    max_requests_per_crawl: int | None = None
+
+
+class BlueskyApiScraper:
     """A crawler class for extracting data from Bluesky social network using their official API.
 
     This crawler manages authentication, concurrent requests, and data collection for both
@@ -88,6 +100,7 @@ class BlueskyCrawler:
         self._crawler.router.handler(label='user')(self._user_handler)  # Handler for user requests
 
     async def _search_handler(self, context: HttpCrawlingContext) -> None:
+        """Handle search requests based on mode."""
         context.log.info(f'Processing search {context.request.url} ...')
 
         data = json.loads(context.http_response.read())
@@ -134,10 +147,10 @@ class BlueskyCrawler:
 
         if cursor := data.get('cursor'):
             next_url = URL(context.request.url).update_query({'cursor': cursor})  # Use yarl for update the query string
-
             await context.add_requests([str(next_url)])
 
     async def _user_handler(self, context: HttpCrawlingContext) -> None:
+        """Handle user profile requests."""
         context.log.info(f'Processing user {context.request.url} ...')
 
         data = json.loads(context.http_response.read())
@@ -174,13 +187,25 @@ async def run() -> None:
     crawling lifecycle including proper cleanup on completion or error.
     """
     async with Actor:
-        actor_input = await Actor.get_input()
-        crawler = BlueskyCrawler(actor_input.get('mode'), actor_input.get('maxRequestsPerCrawl'))
-        crawler.create_session(actor_input.get('indentifier'), actor_input.get('appPassword'))
+        raw_input = await Actor.get_input()
+        actor_input = ActorInput(
+            identifier=raw_input.get('indentifier', ''),
+            app_password=raw_input.get('appPassword', ''),
+            queries=raw_input.get('queries', []),
+            mode=raw_input.get('mode', 'posts'),
+            max_requests_per_crawl=raw_input.get('maxRequestsPerCrawl'),
+        )
+        crawler = BlueskyApiScraper(actor_input.mode, actor_input.max_requests_per_crawl)
         try:
+            crawler.create_session(actor_input.identifier, actor_input.app_password)
+
             await crawler.init_crawler()
-            await crawler.crawl(actor_input.get('queries'))
-        except Exception:
+            await crawler.crawl(actor_input.queries)
+        except httpx.HTTPError as e:
+            Actor.log.error(f'HTTP error occurred: {e}')
+            raise
+        except Exception as e:
+            Actor.log.error(f'Unexpected error: {e}')
             traceback.print_exc()
         finally:
             crawler.delete_session()

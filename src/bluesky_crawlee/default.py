@@ -7,6 +7,7 @@ import httpx
 from yarl import URL
 
 from crawlee import ConcurrencySettings, Request
+from crawlee.configuration import Configuration
 from crawlee.crawlers import HttpCrawler, HttpCrawlingContext
 from crawlee.http_clients import HttpxHttpClient
 from crawlee.storages import Dataset
@@ -18,7 +19,7 @@ BLUESKY_APP_PASSWORD = os.getenv('BLUESKY_APP_PASSWORD')
 BLUESKY_IDENTIFIER = os.getenv('BLUESKY_IDENTIFIER')
 
 
-class BlueskyCrawler:
+class BlueskyApiScraper:
     """A crawler class for extracting data from Bluesky social network using their official API.
 
     This crawler manages authentication, concurrent requests, and data collection for both
@@ -70,9 +71,9 @@ class BlueskyCrawler:
         if not self._user_did:
             raise ValueError('Session not created.')
 
-        # Initialize the datasets
-        self._users = await Dataset.open(name='users')
-        self._posts = await Dataset.open(name='posts')
+        # Initialize the datasets purge the data if it is not empty
+        self._users = await Dataset.open(name='users', configuration=Configuration(purge_on_start=True))
+        self._posts = await Dataset.open(name='posts', configuration=Configuration(purge_on_start=True))
 
         # Initialize the crawler
         self._crawler = HttpCrawler(
@@ -193,7 +194,7 @@ async def run() -> None:
     Creates a crawler instance, manages the session, and handles the complete
     crawling lifecycle including proper cleanup on completion or error.
     """
-    crawler = BlueskyCrawler()
+    crawler = BlueskyApiScraper()
     crawler.create_session()
     try:
         await crawler.init_crawler()
